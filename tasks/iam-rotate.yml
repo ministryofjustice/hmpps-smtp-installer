@@ -9,4 +9,4 @@
 - name: configure sasl
   shell: "{{ iam_rotate_script }} bootstrap > {{ iam_rotation_log }}"
   args:
-    creates: {{ iam_rotation_log }}
+    creates: "{{ iam_rotation_log }}"
