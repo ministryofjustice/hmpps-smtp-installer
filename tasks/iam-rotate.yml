@@ -1,0 +1,12 @@
+---
+
+- name: Create our iam rotate script
+  template:
+    src: "{{ role_path }}/templates/iam_rotate_keys.sh.j2"
+    dest: "{{ iam_rotate_script }}"
+    mode: u+x
+
+- name: configure sasl
+  shell: "{{ iam_rotate_script }} bootstrap > {{ iam_rotation_log }}"
+  args:
+    creates: {{ iam_rotation_log }}

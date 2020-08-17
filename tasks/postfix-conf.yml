@@ -1,0 +1,7 @@
+---
+
+- name: Create our postfix config file
+  template:
+    src: "{{ role_path }}/templates/main.cf.j2"
+    dest: {{ main_cf_file }}
+    mode: "0644"

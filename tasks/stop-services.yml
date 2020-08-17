@@ -1,0 +1,8 @@
+---
+
+- name: Restart service postfix services
+  service:
+    name: "{{ item }}"
+    state: stopped
+  with_items:
+    - 'postfix'
