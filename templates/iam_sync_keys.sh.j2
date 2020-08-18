@@ -24,7 +24,7 @@ sync ()
     CURRENT_SMTP_PASS=$(aws ssm get-parameters --with-decryption --names {{ ses_password_param }} --region {{ region }} --query "Parameters[0]"."Value" | sed 's:^.\(.*\).$:\1:')
     echo "$(date) : Syncing key" > {{ iam_sync_log }}
     echo "$(date) : Syncing key"
-    echo "[$ses_host]:{{ relayhost_port }} $CURRENT_SMTP_USER:$CURRENT_SMTP_PASS}" > {{ sasl_passwd_file }}
+    echo "[$ses_host]:{{ relayhost_port }} $CURRENT_SMTP_USER:$CURRENT_SMTP_PASS" > {{ sasl_passwd_file }}
     configure_sasl_creds
 }
 
