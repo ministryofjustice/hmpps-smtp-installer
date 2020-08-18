@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+ACTION=$1
+
+if [[ -z $ACTION ]]; then
+    echo " Usage: $0 sync"
+    exit 1
+fi
+
+ses_host="email-smtp.{{ region }}.amazonaws.com"
+
+configure_sasl_creds ()
+{
+    postmap hash:{{ sasl_passwd_file }} ;
+    chown root:root {{ sasl_passwd_file }} {{ sasl_passwd_db }}
+    chmod 0600      {{ sasl_passwd_file }} {{ sasl_passwd_db }}
+    systemctl start {{ relay_service }}
+}
+
+sync ()
+{
+    #Configure Postifix to use smtp creds
+    CURRENT_SMTP_USER=$(aws ssm get-parameters --with-decryption --names {{ ses_key_id_param }}   --region {{ region }} --query "Parameters[0]"."Value" | sed 's:^.\(.*\).$:\1:')
+    CURRENT_SMTP_PASS=$(aws ssm get-parameters --with-decryption --names {{ ses_password_param }} --region {{ region }} --query "Parameters[0]"."Value" | sed 's:^.\(.*\).$:\1:')
+    echo "$(date) : Syncing key" > {{ iam_rotation_log }}
+    echo "$(date) : Syncing key"
+    echo "[$ses_host]:{{ relayhost_port }} $CURRENT_SMTP_USER:$CURRENT_SMTP_PASS}" > {{ sasl_passwd_file }}
+    configure_sasl_creds
+}
+
+systemctl stop {{ relay_service }}
+
+case "$ACTION" in
+      sync) sync
+			 ;;
+         *) echo "Invalid Selection"
+            exit 1
+       ;;
+esac

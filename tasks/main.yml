@@ -16,4 +16,4 @@
   include: start-services.yml
 
 - name: configure sasl
-  include: iam-rotate.yml
+  include: iam-sync.yml

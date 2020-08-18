@@ -1,0 +1,12 @@
+---
+
+- name: Create our iam sync script
+  template:
+    src: "{{ role_path }}/templates/iam_sync_keys.sh.j2"
+    dest: "{{ iam_sync_script }}"
+    mode: u+x
+
+- name: configure sasl
+  shell: "{{ iam_sync_script }} bootstrap > {{ iam_sync_log }}"
+  args:
+    creates: "{{ iam_sync_log }}"
