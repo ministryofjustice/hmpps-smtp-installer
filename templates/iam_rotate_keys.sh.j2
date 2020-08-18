@@ -42,7 +42,7 @@ rotate_key ()
 
     #Configure Postifix to use new creds
     #Configure sasl_passwd vars_file
-    echo "[$ses_host]:{{ relayhost_port }} $NEW_ACCESS_ID:$SMTP_PASS" > {{ sasl_passwd_file }}
+    echo "[$ses_host]:{{ relayhost_port }} {{ ses_user }}:{{ ses_pass }}" > {{ sasl_passwd_file }}
     configure_sasl_creds
 
     #Remove Old Creds
@@ -69,7 +69,7 @@ sync ()
     echo "$(date) : Syncing key" > {{ iam_rotation_log }}
     echo "$(date) : Syncing key"
 
-    echo "[$ses_host]:{{ relayhost_port }} $CURRENT_SMTP_USER:$CURRENT_SMTP_PASS" > {{ sasl_passwd_file }}
+    echo "[$ses_host]:{{ relayhost_port }} {{ ses_user }}:{{ ses_pass }}" > {{ sasl_passwd_file }}
     configure_sasl_creds
 }
 
