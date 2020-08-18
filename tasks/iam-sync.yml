@@ -7,6 +7,6 @@
     mode: u+x
 
 - name: configure sasl
-  shell: "{{ iam_sync_script }} bootstrap > {{ iam_sync_log }}"
+  shell: "{{ iam_sync_script }} sync > {{ iam_sync_log }}"
   args:
     creates: "{{ iam_sync_log }}"
