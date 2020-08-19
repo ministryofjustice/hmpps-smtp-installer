@@ -1,0 +1,11 @@
+---
+
+- name: remove sendmail package
+  yum:
+    name: sendmail
+    state: absent
+
+- name: Install cyrus-sasl-plain package
+  yum:
+    name: cyrus-sasl-plain
+    state: present

@@ -1,0 +1,19 @@
+---
+
+- name: Stop postfix service
+  include: stop-services.yml
+
+- name: manage packages
+  include: packages.yml
+
+- name: Install and configure CW Agent
+  include: cwagent.yml
+
+- name: Configure postfix
+  include: postfix-conf.yml
+
+- name: Start and enable postfix service
+  include: start-services.yml
+
+- name: configure sasl
+  include: iam-sync.yml

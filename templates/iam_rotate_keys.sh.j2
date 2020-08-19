@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+
+ACTION=$1
+
+if [[ -z $ACTION ]]; then
+    echo " Usage: $0 rotate|sync|bootstrap"
+    exit 1
+fi
+
+#vars
+ses_host="email-smtp.{{ region }}.amazonaws.com"
+region="{{ region }}"
+EXISTING_ACCESS_ID=$(aws iam list-access-keys --user-name {{ ses_iam_user }} --max-items 1 | grep "AccessKeyId" | awk '{print $2}' | sed 's/"//g')
+
+configure_sasl_creds ()
+{
+    postmap hash:{{ sasl_passwd_file }} ;
+    chown root:root {{ sasl_passwd_file }} {{ sasl_passwd_db }}
+    chmod 0600      {{ sasl_passwd_file }} {{ sasl_passwd_db }}
+    systemctl start {{ relay_service }}
+}
+
+rotate_key ()
+{
+    ####Rotate key
+    echo "$(date) : Rotating key" > {{ iam_rotation_log }}
+    echo "Rotating key"
+    #Create new Access key
+    TEMP_CREDS_FILE="/root/temp_creds_file"
+    aws iam create-access-key --user-name {{ ses_iam_user }} > $TEMP_CREDS_FILE
+    NEW_ACCESS_ID=$(cat $TEMP_CREDS_FILE | grep AccessKeyId | awk '{print $2}' | sed 's/"//g')
+    NEW_SECRET_KEY=$(cat $TEMP_CREDS_FILE | grep SecretAccessKey | awk '{print $2}'| sed 's/"//g' | sed 's/,//')
+    rm -f $TEMP_CREDS_FILE
+
+    ###Convert IAM SecretAccessKey to SES SMTP Password
+    MSG="SendRawEmail"
+    VerInBytes="2"
+    VerInBytes=$(printf \\$(printf '%03o' "$VerInBytes"))
+    SignInBytes=$(echo -n "$MSG"|openssl dgst -sha256 -hmac "$NEW_SECRET_KEY" -binary)
+    SignAndVer=""$VerInBytes""$SignInBytes""
+    SMTP_PASS=$(echo -n "$SignAndVer"|base64)
+
+    #Configure Postifix to use new creds
+    #Configure sasl_passwd vars_file
+    echo "[$ses_host]:{{ relayhost_port }} {{ ses_user }}:{{ ses_pass }}" > {{ sasl_passwd_file }}
+    configure_sasl_creds
+
+    #Remove Old Creds
+    aws iam  delete-access-key --access-key-id $EXISTING_ACCESS_ID --user-name {{ ses_iam_user }} > /dev/null 2>&1 ;
+
+    ###Update Param store
+    aws ssm put-parameter --name {{ ses_iam_user }}-access-key-id          \
+                          --description {{ ses_iam_user }}-access-key-id   \
+                          --value $NEW_ACCESS_ID --type "SecureString" --overwrite    \
+                          --region {{ region }}  > /dev/null 2>&1
+
+    aws ssm put-parameter --name {{ ses_iam_user }}-ses-password          \
+                          --description {{ ses_iam_user }}-ses-password   \
+                          --value $SMTP_PASS    --type "SecureString" --overwrite    \
+                          --region {{ region }}  > /dev/null 2>&1
+}
+
+sync ()
+{
+    #Configure Postifix to use existing creds
+    #Configure sasl_passwd vars_file
+    CURRENT_SMTP_USER=$(aws ssm get-parameters --with-decryption --names {{ ses_iam_user }}-access-key-id --region {{ region }} --query "Parameters[0]"."Value" | sed 's:^.\(.*\).$:\1:')
+    CURRENT_SMTP_PASS=$(aws ssm get-parameters --with-decryption --names {{ ses_iam_user }}-ses-password  --region {{ region }} --query "Parameters[0]"."Value" | sed 's:^.\(.*\).$:\1:')
+    echo "$(date) : Syncing key" > {{ iam_rotation_log }}
+    echo "$(date) : Syncing key"
+
+    echo "[$ses_host]:{{ relayhost_port }} {{ ses_user }}:{{ ses_pass }}" > {{ sasl_passwd_file }}
+    configure_sasl_creds
+}
+
+bootstrap ()
+{
+    if [[ -z $EXISTING_ACCESS_ID ]] ; then
+        rotate_key
+    else
+        sync
+    fi
+}
+
+#Main
+systemctl stop {{ relay_service }}
+
+case "$ACTION" in
+    rotate) rotate_key
+			 ;;
+      sync) sync
+			 ;;
+ bootstrap) bootstrap
+       ;;
+         *) echo "Invalid Selection"
+            exit 1
+       ;;
+esac
